@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from collections import Iterable
+
 import torch
 import numpy
 
@@ -9,7 +11,7 @@ class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward):
+                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, num_envs=None):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -46,7 +48,13 @@ class BaseAlgo(ABC):
 
         # Store parameters
 
-        self.env = ParallelEnv(envs)
+        if isinstance(envs, Iterable): # or not isinstance(envs, ParallelEnv):
+            self.env = ParallelEnv(envs)
+            num_envs = len(envs)
+        elif not isinstance(envs, Iterable) and num_envs is not None:
+            self.env = envs
+        else:
+            raise Exception("envs ist not a list, but num_envs is also not given.")
         self.acmodel = acmodel
         self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
@@ -63,7 +71,7 @@ class BaseAlgo(ABC):
         # Store helpers values
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.num_procs = len(envs)
+        self.num_procs = num_envs
         self.num_frames = self.num_frames_per_proc * self.num_procs
 
         # Control parameters
@@ -235,5 +243,5 @@ class BaseAlgo(ABC):
         return exps, log
 
     @abstractmethod
-    def update_parameters(self):
+    def update_parameters(self, exps):
         pass

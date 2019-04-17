@@ -51,3 +51,6 @@ class ParallelEnv(gym.Env):
 
     def render(self):
         raise NotImplementedError
+
+    def __len__(self):
+        return len(self.locals)
